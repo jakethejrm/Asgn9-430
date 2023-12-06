@@ -110,14 +110,6 @@ def Eq(l, r)
 	return l == r;
 end
 
-def True()
-	return true;
-end
-
-def False()
-	return false;
-end
-
 def ErrorOp()
 	return #handle error
 end
@@ -137,10 +129,6 @@ class Primop
             self.op_func = LessEq
         elif op == 'Eq' 
             self.op_func = Eq
-		elif op == 'true' 
-            self.op_func = True
-		elif op == 'false' 
-            self.op_func = False
         elif op == 'error' 
             self.op_func = ErrorOp
 		end
@@ -158,8 +146,8 @@ var top_env = list(
     Binding('/', Primop('Div')),
     Binding('<=', Primop('LessEq')),
     Binding('equal?', Primop('Eq')),
-    Binding('true', Primop("true")),
-    Binding('false', Primop("false")), 
+    Binding('true', true),
+    Binding('false', false), 
     Binding('error', Primop('error'))
 )
 
@@ -208,7 +196,19 @@ var div_test = AppC(IdC('/'), [NumC(10), NumC(2)])
 print("div test", interp(div_test, my_env))  # 5
 
 var ifc_t = IfC(AppC(IdC('equal?'), [NumC(5), NumC(5)]), NumC(10), NumC(20))
-print("ifc true", interp(ifc_t, my_env))  # 10
+print("ifc #t test", interp(ifc_t, my_env))  # 10
 
 var ifc_f = IfC(AppC(IdC('equal?'), [NumC(5), NumC(7)]), NumC(10), NumC(20))
-print("ifc false", interp(ifc_f, my_env))  # 20
+print("ifc #f test ", interp(ifc_f, my_env))  # 20
+
+var gre_t = IfC(AppC(IdC('<='), [NumC(10), NumC(7)]), NumC(10), NumC(20))
+print("<= #t test", interp(gre_t, my_env))  # 20
+
+var gre_f = IfC(AppC(IdC('<='), [NumC(5), NumC(7)]), NumC(10), NumC(20))
+print("<= #f test", interp(gre_f, my_env))  # 10
+
+var bool_t = IfC(IdC('true'), NumC(10), NumC(20))
+print("#t test", interp(bool_t, my_env))  # 10
+
+var bool_f = IfC(IdC('false'), NumC(10), NumC(20))
+print("#f test", interp(bool_f, my_env))  # 20

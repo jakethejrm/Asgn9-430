@@ -8,15 +8,15 @@ class NumC : ExprC
 	var n
 	def init(n)
         self.n = n
-		end
 	end
+end
 	
 class StrC : ExprC
 	var s
 	def init(s)
         self.s = s
-		end
 	end
+end
 	
 class AppC : ExprC
 	var args
@@ -24,15 +24,15 @@ class AppC : ExprC
 	def init(fun, args)
 		self.fun = fun
 		self.args = args
-		end
 	end
+end
 	
 class IdC : ExprC
 	var sym
 	def init(sym)
 		self.sym = sym
-		end
 	end
+end
 	
 class IfC : ExprC
 	var a, t, f
@@ -40,8 +40,8 @@ class IfC : ExprC
 		self.a = a
 		self.f = f
 		self.t = t
-		end
 	end
+end
 
 class LamC : ExprC
 	var args, body
@@ -64,34 +64,86 @@ class env
 	def init(bindings)
 		self.bindings = bindings
 	end
+
+	def lookup(name)
+        for b : self.bindings
+            if b.name == name 
+                return b.val
+			end
+		end
+        return nil 
+    end
 end
 
-class mt-env
+class mtEnv
 	var bindings
 	def init()
 		self.bindings = nil
 	end 
 end
 
+def Add(l, r)
+	return l + r;
+end
+
+def Sub(l, r)
+	return l - r; 
+end
+
+def Mult(l, r)
+	return l * r;
+end
+
+def Div(l, r)
+	if r != 0
+		return l / r;
+	else
+		#handle error
+	end
+end
+
+def LessEq(l, r)
+	return l <= r;
+end
+
+def Eq(l, r)
+	return l == r;
+end
+
+def True()
+	return true;
+end
+
+def False()
+	return false;
+end
+
+def ErrorOp()
+	return #handle error
+end
+
 class Primop
     var op_func
-
     def init(op)
-        if op == 'Add' then
+        if op == 'Add' 
             self.op_func = Add
-        elif op == 'Sub' then
+        elif op == 'Sub' 
             self.op_func = Sub
-        elif op == 'Mult' then
+        elif op == 'Mult' 
             self.op_func = Mult
-        elif op == 'Div' then
+        elif op == 'Div' 
             self.op_func = Div
-        elif op == 'LessEq' then
+        elif op == 'LessEq' 
             self.op_func = LessEq
-        elif op == 'Eq' then
+        elif op == 'Eq' 
             self.op_func = Eq
-        elif op == 'error' then
+		elif op == 'true' 
+            self.op_func = True
+		elif op == 'false' 
+            self.op_func = False
+        elif op == 'error' 
             self.op_func = ErrorOp
-        end
+		end
     end
 
     def call(l, r)
@@ -102,80 +154,61 @@ end
 var top_env = list(
     Binding('+', Primop("Add")),
     Binding('-', Primop("Sub")),
-    Binding('*', PrimopC("Mult")),
-    Binding('/', PrimopC('Div')),
-    Binding('<=', PrimopC('LessEq')),
-    Binding('equal?', PrimopC('Eq')),
-    Binding('true', BoolV(true)), #need to handle these
-    Binding('false', BoolV(false)), #this
-    Binding('error', PrimopC('error'))
+    Binding('*', Primop("Mult")),
+    Binding('/', Primop('Div')),
+    Binding('<=', Primop('LessEq')),
+    Binding('equal?', Primop('Eq')),
+    Binding('true', Primop("true")),
+    Binding('false', Primop("false")), 
+    Binding('error', Primop('error'))
 )
 
-
-def Add(l, r)
-	return l + r;
-end
-def Sub(l, r)
-	return l - r; 
-end
-def Mult(l, r)
-	return l * r;
-end
-def Div(l, r)
-	if r !== 0
-		return l / r;
-	#handle error
-	end
-end
-end
-def LessEq(l, r)
-	return l <= r;
-end
-def Eq(l, r)
-	return l = r;
-end
-
-
-
-# All chat below - should be looked at 
 def interp(a, env)
-	if type(a) == NumC.type
+	if classof(a) == NumC
 		return a.n
-	elif type(a) == LamC.type
-		return {'args': a.args, 'body': a.body, 'env': env}
-	elif type(a) == AppC.type
+	elif classof(a) == LamC
+		#Needs handling
+		return
+	elif classof(a) == AppC
 		var val = interp(a.fun, env)
-		if type(val) == 'table'  # Assuming closures are represented as tables
-			var arg_values = list.map(a.args, def (arg) return interp(arg, env) end)
-			if size(val['args']) == size(arg_values)
-				var new_env = env + list.zip(val['args'], arg_values)  # Simplified environment handling
-				return interp(val['body'], new_env)
-			else
-				# Handle error
-			end
-		elif val.contains('op') 
-			var arg_values = list.map(a.args, def (arg) return interp(arg, env) end)
-        	return primop_execute(val['op'], arg_values)
+		if isinstance(val, Primop)
+			return val.call(interp(a.args[0]), interp(a.args[1]))
 		end
-	elif type(a) == IfC.type
+		#Also handle closure
+	elif classof(a) == IfC
 		var result = interp(a.a, env)
-		if type(result) == 'boolean'
+		if type(result) == "bool"
 			if result
 				return interp(a.t, env)
 			else
 				return interp(a.f, env)
 			end
 		else
-			# Handle error
+			# Handle error for if not boolean
 		end
-	elif type(a) == IdC.type
-		# Implement lookup logic for identifiers
+	elif classof(a) == IdC
+		return env.lookup(a.sym)
 	else
-		# Handle error for unrecognized types
+		# Handle error for bad type
 	end
 end
 	
+var my_env = env(top_env) #initialize top env
 
-var lam = LamC(['x'], ((PrimopC "+") (IdC('x'), NumC(1))))
-var app = AppC(lam, [NumC(2)])
-print(interp(app, {}))
+var add_test = AppC(IdC('+'), [NumC(2), NumC(3)])
+print("add test", interp(add_test, my_env)) # 5
+
+var sub_test = AppC(IdC('-'), [NumC(5), NumC(3)])
+print("sub test", interp(sub_test, my_env)) # 2
+
+var mult_test = AppC(IdC('*'), [NumC(4), NumC(3)])
+print("mult test", interp(mult_test, my_env))  # 12
+
+var div_test = AppC(IdC('/'), [NumC(10), NumC(2)])
+print("div test", interp(div_test, my_env))  # 5
+
+var ifc_t = IfC(AppC(IdC('equal?'), [NumC(5), NumC(5)]), NumC(10), NumC(20))
+print("ifc true", interp(ifc_t, my_env))  # 10
+
+var ifc_f = IfC(AppC(IdC('equal?'), [NumC(5), NumC(7)]), NumC(10), NumC(20))
+print("ifc false", interp(ifc_f, my_env))  # 20

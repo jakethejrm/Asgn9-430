@@ -59,7 +59,7 @@ class Binding
 	end
 end
 
-class env 
+class newEnv #had to be called newEnv because calling it env prevented env(new_bindings) from working, i think because env was already in scope by inter(a, env)
 	var bindings
 	def init(bindings)
 		self.bindings = bindings
@@ -74,6 +74,16 @@ class env
         return nil 
     end
 end
+
+class ClosV
+    var args, body, env
+    def init(args, body, env)
+        self.args = args
+        self.body = body
+        self.env = env
+    end
+end
+
 
 class mtEnv
 	var bindings
@@ -155,14 +165,35 @@ def interp(a, env)
 	if classof(a) == NumC
 		return a.n
 	elif classof(a) == LamC
-		#Needs handling
-		return
+        return ClosV(a.args, a.body, env)
 	elif classof(a) == AppC
 		var val = interp(a.fun, env)
-		if isinstance(val, Primop)
-			return val.call(interp(a.args[0]), interp(a.args[1]))
+		if isinstance(val, ClosV)
+			if size(val.args) == size(a.args)
+                var new_bindings = list()
+                for i : range(0, val.args.size() - 1)
+					var arg_value = interp(a.args[i], env)
+                    new_bindings.push(Binding(val.args[i], arg_value))
+				end
+
+				if(isinstance(val.env, newEnv)) #if lambsa are nested val.env is recognized as a "newEnv" class
+					for binding : val.env.bindings
+						new_bindings.push(binding)
+					end
+				else  #otherwise its recognized as a list (despite interp being called with a "newEnv" class ???) 
+					for binding : val.env
+						new_bindings.push(binding)
+					end
+				end
+
+                var new_env = newEnv(new_bindings)
+                return interp(val.body, new_env)
+            else
+                return env.lookup('error')
+			end
+		elif isinstance(val, Primop)
+			return val.call(interp(a.args[0], env), interp(a.args[1], env))
 		end
-		#Also handle closure
 	elif classof(a) == IfC
 		var result = interp(a.a, env)
 		if type(result) == "bool"
@@ -181,7 +212,7 @@ def interp(a, env)
 	end
 end
 	
-var my_env = env(top_env) #initialize top env
+var my_env = newEnv(top_env) #initialize top env
 
 var add_test = AppC(IdC('+'), [NumC(2), NumC(3)])
 print("add test", interp(add_test, my_env)) # 5
@@ -212,3 +243,23 @@ print("#t test", interp(bool_t, my_env))  # 10
 
 var bool_f = IfC(IdC('false'), NumC(10), NumC(20))
 print("#f test", interp(bool_f, my_env))  # 20
+
+var lam_func = LamC(['x'], IdC('x'))
+var lam_app = AppC(lam_func, [NumC(5)])
+print("lam test", interp(lam_app, top_env)) # 5
+
+var mult_lam = LamC(['x', 'y'], AppC(IdC('*'), [IdC('x'), IdC('y')]))
+var mult_app = AppC(mult_lam, [NumC(3), NumC(4)])
+print("mult lam test", interp(mult_app, top_env)) # 12
+
+var cond_lam = LamC(['x'], IfC(AppC(IdC('<='), [IdC('x'), NumC(10)]), NumC(1), NumC(0)))
+var cond_app_t = AppC(cond_lam, [NumC(5)])
+print("cond lam test #t", interp(cond_app_t, top_env)) # 1
+
+var cond_app_f = AppC(cond_lam, [NumC(15)])
+print("cond lam test #f", interp(cond_app_f, top_env)) # 0
+
+var nested_lam = LamC(['x'], LamC(['y'], AppC(IdC('+'), [IdC('x'), IdC('y')])))
+var nested_app = AppC(AppC(nested_lam, [NumC(5)]), [NumC(3)])
+print("nested lam test", interp(nested_app, top_env)) # 8
+
